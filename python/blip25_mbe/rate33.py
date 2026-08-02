@@ -1,4 +1,4 @@
-"""Half-rate (DVSI rate-33) AMBE+2 channel-frame toolkit.
+"""Half-rate (rate-33) AMBE+2 channel-frame toolkit.
 
 The bit-field layer *below* the PCM↔wire façade: the four info vectors
 ``û₀..û₃``, the FEC code vectors ``c₀..c₃``, the deprioritized
@@ -10,7 +10,7 @@ The one-call field extractors cover all three wire forms::
 
     from blip25_mbe import rate33
     b = rate33.fields_from_fec(frame9)       # 9-byte FEC frame
-    b = rate33.fields_from_no_fec(frame7)    # 7-byte DVSI r34 no-FEC
+    b = rate33.fields_from_no_fec(frame7)    # 7-byte r34 no-FEC
     b = rate33.fields_from_natural(frame7)   # 7-byte natural / AMBE_d
 """
 

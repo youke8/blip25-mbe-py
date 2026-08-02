@@ -1,15 +1,15 @@
-"""Coverage for the DVSI soft-decision (LLR) packet submodule."""
+"""Coverage for the reference soft-decision (LLR) packet submodule."""
 
 import numpy as np
 import pytest
 
 import blip25_mbe
-from blip25_mbe import dvsi_soft_decision as dsd
+from blip25_mbe import reference_soft_decision as dsd
 
 
 def test_module_is_reexported_namespace() -> None:
     # Reachable both as a package submodule and as the compiled child.
-    assert blip25_mbe.dvsi_soft_decision is dsd
+    assert blip25_mbe.reference_soft_decision is dsd
     assert dsd.SD_HEADER == 0x13EC
     assert dsd.SD_PACKET_WORDS == 60
     assert dsd.SD_SLOTS == 192

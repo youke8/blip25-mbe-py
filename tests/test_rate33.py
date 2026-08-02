@@ -129,10 +129,16 @@ def test_field_dump_from_real_vocoder_frames() -> None:
     # A real AMBE+2 wire frame's parameter fields are recoverable, and
     # the FEC (9-byte) and r34 no-FEC (7-byte) forms carry the same info
     # layer, so they deprioritize to identical fields.
+    #
+    # blip25-mbe 0.3.0's encoder carries a one-frame look-ahead, so the
+    # frame-0 output is a placeholder; feed one warm-up frame and compare
+    # a settled frame.
     pcm = (2000 * np.sin(2 * np.pi * 440 * np.arange(160) / 8000)).astype(np.int16)
 
     vc_fec = blip25_mbe.Vocoder(blip25_mbe.Rate.AMBEPLUS2_3600X2450)
     vc_nofec = blip25_mbe.Vocoder(blip25_mbe.Rate.AMBEPLUS2_2450X2450)
+    vc_fec.encode_pcm(pcm)  # warm up past the frame-0 look-ahead placeholder
+    vc_nofec.encode_pcm(pcm)
     frame9 = vc_fec.encode_pcm(pcm)
     frame7 = vc_nofec.encode_pcm(pcm)
     assert len(frame9) == 9 and len(frame7) == 7

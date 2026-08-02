@@ -1,14 +1,14 @@
-"""DVSI soft-decision chip handoff — the 4-bit soft-decision (LLR) packet
-format for soft-FEC interchange with DVSI AMBE-2000/2020/3000 hardware.
+"""Reference soft-decision handoff — the 4-bit soft-decision (LLR) packet
+format for soft-FEC interchange with AMBE-2000/2020/3000 hardware.
 
-Re-exports the compiled ``_blip25_mbe.dvsi_soft_decision`` submodule symbols
-into the stable ``blip25_mbe.dvsi_soft_decision`` namespace.
+Re-exports the compiled ``_blip25_mbe.reference_soft_decision`` submodule
+symbols into the stable ``blip25_mbe.reference_soft_decision`` namespace.
 """
 
-from ._blip25_mbe.dvsi_soft_decision import (
-    DVSI_P25_FULLRATE_FEC,
-    DVSI_P25_FULLRATE_NOFEC,
+from ._blip25_mbe.reference_soft_decision import (
     IMBE_FULL_RATE_CHANNEL_BITS,
+    P25_FULLRATE_FEC,
+    P25_FULLRATE_NOFEC,
     RATE_33_CHANNEL_BITS,
     SD_DATA_WORDS,
     SD_HEADER,
@@ -26,9 +26,9 @@ from ._blip25_mbe.dvsi_soft_decision import (
 )
 
 __all__ = [
-    "DVSI_P25_FULLRATE_FEC",
-    "DVSI_P25_FULLRATE_NOFEC",
     "IMBE_FULL_RATE_CHANNEL_BITS",
+    "P25_FULLRATE_FEC",
+    "P25_FULLRATE_NOFEC",
     "RATE_33_CHANNEL_BITS",
     "SD_DATA_WORDS",
     "SD_HEADER",

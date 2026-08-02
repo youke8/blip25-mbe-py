@@ -1,4 +1,4 @@
-"""Type stubs for the DVSI soft-decision submodule."""
+"""Type stubs for the reference soft-decision submodule."""
 
 from __future__ import annotations
 
@@ -14,8 +14,8 @@ SD_DATA_WORDS: int
 SD_SLOTS: int
 RATE_33_CHANNEL_BITS: int
 IMBE_FULL_RATE_CHANNEL_BITS: int
-DVSI_P25_FULLRATE_FEC: List[int]
-DVSI_P25_FULLRATE_NOFEC: List[int]
+P25_FULLRATE_FEC: List[int]
+P25_FULLRATE_NOFEC: List[int]
 
 class SdPacketHeader:
     power_control: int
