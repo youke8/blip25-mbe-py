@@ -9,7 +9,7 @@
 use blip25_mbe::enhancement::{ClassicalConfig, EnhancementMode};
 use blip25_mbe::rate33::{frame as r33f, priority as r33p};
 use blip25_mbe::reference_soft_decision as sd;
-use blip25_mbe::vocoder::{self as bv, AnalysisOutputKind, Rate as BRate};
+use blip25_mbe::vocoder::{self as bv, AnalysisOutputKind, FrameDisposition, Rate as BRate};
 use numpy::{IntoPyArray, PyArray1, PyReadonlyArray1};
 use pyo3::exceptions::PyValueError;
 use pyo3::prelude::*;
@@ -51,6 +51,30 @@ pub enum PyRate {
     /// IDAS/NXDN over-the-air) must de-interleave first.
     #[pyo3(name = "AMBEPLUS2_2450X2450")]
     AmbePlus2_2450x2450,
+}
+
+#[pymethods]
+impl PyRate {
+    /// On-wire byte count for one frame at this rate.
+    #[getter]
+    fn fec_frame_bytes(&self) -> usize {
+        BRate::from(*self).fec_frame_bytes()
+    }
+
+    /// One wire frame, [`fec_frame_bytes`] long, marked as an **erasure**.
+    ///
+    /// Pass it to [`Vocoder.decode_bits`] in place of a frame the transport
+    /// lost. The decoder conceals: it repeats the previous good frame, and
+    /// after four consecutive erasures falls back to comfort noise. Feeding
+    /// this keeps decoder state aligned with the sender's, which simply
+    /// skipping the frame would not.
+    ///
+    /// Both codecs mark an erasure in-band by placing the pitch index outside
+    /// its valid range, so this works on the no-FEC rates too, where there are
+    /// no channel-error counts to drive concealment.
+    fn erasure_frame<'py>(&self, py: Python<'py>) -> Bound<'py, PyBytes> {
+        PyBytes::new_bound(py, &BRate::from(*self).erasure_frame())
+    }
 }
 
 impl From<PyRate> for BRate {
@@ -113,6 +137,19 @@ impl From<&EnhancementMode> for PyEnhancementMode {
             EnhancementMode::None => PyEnhancementMode::NoneMode,
             EnhancementMode::Classical(_) => PyEnhancementMode::Classical,
         }
+    }
+}
+
+fn disposition_str(d: FrameDisposition) -> &'static str {
+    // The catch-all guards against future variants when this crate is
+    // rebuilt against a newer `blip25-mbe`.
+    #[allow(unreachable_patterns)]
+    match d {
+        FrameDisposition::Use => "use",
+        FrameDisposition::Repeat => "repeat",
+        FrameDisposition::Mute => "mute",
+        FrameDisposition::Silence => "silence",
+        _ => "unknown",
     }
 }
 
@@ -230,6 +267,49 @@ impl PyVocoder {
                 AnalysisOutputKind::Tone { id, amplitude } => Some((id, amplitude)),
                 _ => None,
             })
+    }
+
+    /// How the decoder treated the last decoded frame, or `None` if no
+    /// decode has run since the last [`reset`]:
+    ///
+    /// * `"use"` — audio decoded from the frame's own bits.
+    /// * `"repeat"` — the frame was unusable (channel errors past the gate, or
+    ///   an erasure marker) and the previous good frame was repeated.
+    /// * `"mute"` — four or more consecutive unusable frames, or a smoothed
+    ///   error rate past the limit; the output is comfort noise, not speech.
+    /// * `"silence"` — the sender asked for silence. Half-rate only; this is
+    ///   intent, not concealment, and does not advance the concealment
+    ///   counters.
+    ///
+    /// Anything other than `"use"` means the audio just returned is not what
+    /// the sender encoded.
+    fn last_disposition(&self) -> Option<&'static str> {
+        self.inner
+            .last_stats()
+            .decode
+            .as_ref()
+            .map(|d| disposition_str(d.disposition))
+    }
+
+    /// `(epsilon_0, epsilon_t)` for the last decoded frame — errors corrected
+    /// in the highest-priority FEC word, and the sum across the top two — or
+    /// `None` if no decode has run since the last [`reset`].
+    ///
+    /// Always `(0, 0)` on the no-FEC rates, which carry no parity to count.
+    /// Rising values are the channel degrading before concealment engages.
+    fn last_decode_errors(&self) -> Option<(u8, u8)> {
+        self.inner
+            .last_stats()
+            .decode
+            .as_ref()
+            .map(|d| (d.epsilon_0, d.epsilon_t))
+    }
+
+    /// One wire frame marked as an erasure, for a frame the transport lost.
+    /// Convenience for `vocoder.rate.erasure_frame()`.
+    #[getter]
+    fn erasure_frame<'py>(&self, py: Python<'py>) -> Bound<'py, PyBytes> {
+        PyBytes::new_bound(py, &self.inner.rate().erasure_frame())
     }
 
     fn __repr__(&self) -> String {

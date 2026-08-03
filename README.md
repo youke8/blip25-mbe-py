@@ -86,6 +86,48 @@ vc.enhancement                  # -> EnhancementMode.CLASSICAL
 > upstream in 0.3.0 and are no longer exposed. `EnhancementMode` now
 > defaults to `NONE` (was `CLASSICAL`).
 
+## Packet loss and concealment
+
+When a transport drops a frame, do **not** just skip it — that leaves the
+decoder's cross-frame state out of step with the sender's. Feed an erasure
+frame in its place and the decoder conceals the way a radio does: repeat the
+last good frame, then fall back to comfort noise if the gap runs on.
+
+```python
+vc = blip25_mbe.Vocoder(blip25_mbe.Rate.AMBEPLUS2_3600X2450)
+
+for seq, frame in incoming:                 # your jitter buffer
+    while seq > expected:                   # fill the hole
+        vc.decode_bits(vc.erasure_frame)
+        expected += 1
+    pcm = vc.decode_bits(frame)
+    expected += 1
+```
+
+Read back what the decoder actually did with the frame it just returned:
+
+```python
+vc.last_disposition()      # "use" | "repeat" | "mute" | "silence" | None
+vc.last_decode_errors()    # (epsilon_0, epsilon_t) FEC error counts, or None
+```
+
+| disposition | meaning |
+|---|---|
+| `"use"` | decoded from the frame's own bits |
+| `"repeat"` | frame unusable; previous good frame repeated |
+| `"mute"` | 4+ unusable in a row; output is comfort noise, not speech |
+| `"silence"` | sender asked for silence (half-rate only; intent, not concealment) |
+
+Anything other than `"use"` means the audio you just got is not what the
+sender encoded — useful for driving a "signal lost" indicator rather than
+playing concealment artifacts as if they were speech.
+
+Both codecs mark an erasure in-band, by placing the pitch index outside its
+valid range, so this works on the no-FEC rates too — where there is no parity
+to count and `last_decode_errors()` stays `(0, 0)`.
+
+`Rate.erasure_frame()` is the same value without needing a vocoder instance.
+
 ## Reference soft-decision packets
 
 `blip25_mbe.reference_soft_decision` provides the 4-bit soft-decision
